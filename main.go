@@ -254,7 +254,14 @@ func main() {
 	http.HandleFunc("/draw", canvas.drawHandler)
 	http.Handle("/", http.FileServer(rice.MustFindBox("http-files").HTTPBox()))
 
-	err := http.ListenAndServe(":1234", nil)
+	server := &http.Server{
+		Addr:           ":1234",
+		Handler:        http.DefaultServeMux,
+		ReadTimeout:    5 * time.Second,
+		WriteTimeout:   5 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatalf("Error listenAndServe: %s\n", err)
 	}
