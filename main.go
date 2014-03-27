@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -106,6 +107,7 @@ func (c *canvas) socketHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := websocket.Upgrade(w, r, nil, 10240, 10240)
 	if err != nil {
 		log.Printf("Error upgrading websocket: %s\n", err)
+		return
 	}
 
 	c.lock.Lock()
@@ -240,6 +242,7 @@ func (c *canvas) sendUpdate(update *canvasUpdate) {
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// create canvas
 	canvas := &canvas{
