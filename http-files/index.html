@@ -5,14 +5,55 @@
 		<style type="text/css">
 			html, body{
 				height: 100%;
+				width: 100%;
 				margin: 0px;
 				padding: 0px;
 				overflow: hidden;
 			}
+			#canvas {
+				width: 80%;
+				float: left;
+				display: block;
+				position: relative;
+				height: 100%;
+			}
+			#info {
+				position: absolute;
+				left: 80%;
+				width: 20%;
+				float: left;
+				display: block;
+				padding: 5px;
+			}
+			.pixel {
+				position: absolute;
+				display: block;
+				border: 1px dotted #303030;
+			}
+			#error {
+				color: red;
+				font-weight: bold;
+			}
 		</style>
 	</head>
 	<body id="body" >
+		<div id="canvas" >
 
+		</div>
+		<div id="info" >
+			<div id="error" ></div><br/>
+			<div >
+				Width: <span class="showWidth"></span><br/>
+				Height: <span class="showHeight"></span>
+			</div><br/>
+			<form target="/" method="get" >
+				Open a single layer:<br/>
+				<input type="text" name="layer" value="" ><button type="submit">go</button>
+			</form><br/>
+			<div id="viewAllLayers" ></div><br/></br>
+			<div id="hoverInfo" >Hover a pixel to view the layer name that last updated the pixel.</div><br/><br/>
+			<div id="postInfo" ></div><br/>
+		</div>
 		<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.0/jquery.min.js" ></script>
 		<script src="/gopaint.js" ></script>
 	</body>

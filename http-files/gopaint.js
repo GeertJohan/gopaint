@@ -1,20 +1,28 @@
 
 var state = 0;
-var canvas = {};
-var timestamps = [];
-var ws = new WebSocket("ws://"+document.location.host+"/socket");
+var ws = new WebSocket("ws://"+document.location.host+"/socket"+document.location.search);
 
 ws.onopen = function() {
 	console.log("websocket opened");
 };
+
+$('#postInfo').html('post to: http://'+document.location.host+'/draw<br/>more info: github.com/GeertJohan/gopaint')
 
 ws.onmessage = function (msg) { 
 	console.dir(msg);
 	switch(state) {
 		case 0:
 			state = 1;
-			canvas = jQuery.parseJSON(msg.data);
-			
+			var canvas = jQuery.parseJSON(msg.data);
+			var timestamps = [];
+
+			if(canvas.SinglelayerMode) {
+				$('#viewAllLayers').html('<a href="/">View all layers</a>');
+			}
+
+			$('.showWidth').html(canvas.Width+'');
+			$('.showHeight').html(canvas.Height+'');
+
 			// calculate sizes in percentage
 			var sizeX = 100/canvas.Width;
 			var sizeY = 100/canvas.Height;
@@ -27,9 +35,10 @@ ws.onmessage = function (msg) {
 					var posY = y*sizeY;
 					var pixelDiv = $("<div>", {
 						id: "pixel_"+n,
-						style: "border: 1px dotted #303030;  width: "+sizeX+"%; height: "+sizeY+"%; position: absolute; left: "+posX+"%; top: "+posY+"%;",
+						style: "width: "+sizeX+"%; height: "+sizeY+"%; left: "+posX+"%; top: "+posY+"%;",
+						class: "pixel",
 					});
-					$('#body').append(pixelDiv);
+					$('#canvas').append(pixelDiv);
 				}
 			}
 
@@ -40,11 +49,8 @@ ws.onmessage = function (msg) {
 					layer.Pixels.forEach(function(pixel) {
 						if(!timestamps.hasOwnProperty(pixel.Position) || pixel.Timestamp > timestamps[pixel.Position]) {
 							timestamps[pixel.Position] = pixel.Timestamp;
-							console.log('pixel '+pixel.Position+' is #'+pixel.Color);
 							$('#pixel_'+pixel.Position).css('background-color', '#'+pixel.Color);
 							$('#pixel_'+pixel.Position).attr('title', layer.Name);
-						} else {
-							console.log('old pixel');
 						}
 					});
 				}
@@ -53,20 +59,6 @@ ws.onmessage = function (msg) {
 		case 1:
 			update = jQuery.parseJSON(msg.data);
 
-			// var layer = {};
-			// if(canvas.Layers.hasOwnProperty(update.LayerName)) {
-			// 	layer = canvas.Layers[update.LayerName];
-			// } else {
-			// 	layer = {
-			// 		Name: update.LayerName,
-			// 		Pixels: [],
-			// 	};
-			// 	canvas.Layers[update.LayerName] = layer
-			// }
-
-			// if(!canvas.Layer.Pixels.hasOwnProperty(update.Position)) {
-			// 	canvas.Layer.Pixels[update.Position] = {};
-			// }
 			var color = "";
 			if(update.PixelState) {
 				color = '#'+update.PixelColor;
@@ -82,5 +74,5 @@ ws.onmessage = function (msg) {
 
 ws.onclose = function() {
 	alert("websocket connection with server is closed...");
-	$('#body').html("<h3>Connection lost. Please refresh this page.</h3>");
+	$('#canvas').html("<h3>Connection lost. Please refresh this page.</h3>");
 };

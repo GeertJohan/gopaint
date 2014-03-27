@@ -18,15 +18,22 @@ import (
 var regexpColor = regexp.MustCompile(`^([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$`)
 
 type canvas struct {
-	Width  uint64
-	Height uint64
+	width  uint64
+	height uint64
 
-	Layers     map[string]*layer
+	layers     map[string]*layer
 	layersLock sync.RWMutex
 
 	lock           sync.RWMutex // need writelock for consistent snapshot and subscriber map update
 	subscribers    map[uint]chan *canvasUpdate
 	subscribersInc incremental.Uint
+}
+
+type snapshot struct {
+	Width           uint64
+	Height          uint64
+	SinglelayerMode bool
+	Layers          map[string]*layer
 }
 
 type canvasUpdate struct {
@@ -70,7 +77,7 @@ type pixel struct {
 func (c *canvas) getLayer(name string) *layer {
 	// get readlock and find layer
 	c.layersLock.RLock()
-	l, exists := c.Layers[name]
+	l, exists := c.layers[name]
 	c.layersLock.RUnlock()
 
 	// if layer doesn't exist, we might need to make it
@@ -78,14 +85,14 @@ func (c *canvas) getLayer(name string) *layer {
 		// layer does not exist, get write lock
 		c.layersLock.Lock()
 		// check again if layer doesn't exist (avoid race)
-		l, exists = c.Layers[name]
+		l, exists = c.layers[name]
 		if !exists {
 			// still doesn't exist with write-lock, now make layer
 			l = &layer{
 				Name:   name,
 				Pixels: make(map[uint64]*pixel),
 			}
-			c.Layers[name] = l
+			c.layers[name] = l
 		}
 		// write unlock
 		c.layersLock.Unlock()
@@ -96,13 +103,29 @@ func (c *canvas) getLayer(name string) *layer {
 }
 
 func (c *canvas) socketHandler(w http.ResponseWriter, r *http.Request) {
+	layerName := r.FormValue("layer")
+
 	conn, err := websocket.Upgrade(w, r, nil, 10240, 10240)
 	if err != nil {
 		log.Printf("Error upgrading websocket: %s\n", err)
 	}
 
 	c.lock.Lock()
-	err = conn.WriteJSON(c)
+	snapshot := &snapshot{
+		Width:  c.width,
+		Height: c.height,
+	}
+	if len(layerName) > 0 {
+		snapshot.SinglelayerMode = true
+		snapshot.Layers = make(map[string]*layer)
+		l, exists := c.layers[layerName]
+		if exists {
+			snapshot.Layers[layerName] = l
+		}
+	} else {
+		snapshot.Layers = c.layers
+	}
+	err = conn.WriteJSON(snapshot)
 	if err != nil {
 		log.Printf("Error sending snapshot: %s\n", err)
 		c.lock.Unlock()
@@ -151,7 +174,7 @@ func (c *canvas) drawHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("'x' is invalid: %s", err), http.StatusBadRequest)
 		return
 	}
-	if x >= c.Width {
+	if x >= c.width {
 		http.Error(w, "'x' is out of range", http.StatusBadRequest)
 		return
 	}
@@ -166,13 +189,13 @@ func (c *canvas) drawHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("'y' is invalid: %s", err), http.StatusBadRequest)
 		return
 	}
-	if y >= c.Height {
+	if y >= c.height {
 		http.Error(w, "'y' is out of range", http.StatusBadRequest)
 		return
 	}
 
 	// calculate position
-	position := y*c.Width + x
+	position := y*c.width + x
 
 	// get layer and lock pixmap
 	layer := c.getLayer(layerName)
@@ -236,9 +259,9 @@ func main() {
 
 	// create canvas
 	canvas := &canvas{
-		Width:       40,
-		Height:      40,
-		Layers:      make(map[string]*layer),
+		width:       40,
+		height:      40,
+		layers:      make(map[string]*layer),
 		subscribers: make(map[uint]chan *canvasUpdate),
 	}
 
