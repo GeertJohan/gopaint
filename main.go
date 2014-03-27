@@ -225,7 +225,7 @@ func (c *canvas) drawHandler(w http.ResponseWriter, r *http.Request) {
 	c.sendUpdate(update)
 
 	// all done
-	io.WriteString(w, "Thanks for your contribution!")
+	io.WriteString(w, "done!")
 }
 
 func (c *canvas) sendUpdate(update *canvasUpdate) {
