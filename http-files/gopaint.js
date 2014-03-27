@@ -59,13 +59,7 @@ ws.onmessage = function (msg) {
 		case 1:
 			update = jQuery.parseJSON(msg.data);
 
-			var color = "";
-			if(update.PixelState) {
-				color = '#'+update.PixelColor;
-			} else {
-				color = "white";
-			}
-			$('#pixel_'+update.PixelPosition).css('background-color', color);
+			$('#pixel_'+update.PixelPosition).css('background-color', '#'+update.PixelColor);
 			$('#pixel_'+update.PixelPosition).attr('title', update.LayerName);
 
 			break;
