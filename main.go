@@ -38,10 +38,8 @@ type snapshot struct {
 
 type canvasUpdate struct {
 	LayerName     string
-	PixelPosition uint64 `json:",omitempty"`
-	PixelState    bool   `json:",omitempty"`
-	PixelColor    string `json:",omitempty"`
-	ClearAll      bool   `json:",omitempty"`
+	PixelPosition uint64
+	PixelColor    string
 }
 
 type layer struct {
@@ -145,6 +143,9 @@ func (c *canvas) socketHandler(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		update := <-subscriberCh
+		if len(layerName) > 0 && update.LayerName != layerName {
+			continue // skip layers that are not the requested layer
+		}
 		err = conn.WriteJSON(update)
 		if err != nil {
 			log.Printf("Error sending udpate: %s\n", err)
@@ -205,37 +206,20 @@ func (c *canvas) drawHandler(w http.ResponseWriter, r *http.Request) {
 		LayerName: layerName,
 	}
 
-	// switch on state
-	state := r.FormValue("state")
-	switch state {
-	case "on":
-		// get and verify color
-		color := r.FormValue("color")
-		if !regexpColor.MatchString(color) {
-			http.Error(w, "'color' is invalid, must be HEX color code without hash, e.g. `FF0000`", http.StatusBadRequest)
-			return
-		}
-		layer.Pixels[position] = &pixel{
-			timestamp: time.Now().Unix(),
-			color:     color,
-		}
-
-		// set fields on update
-		update.PixelPosition = position
-		update.PixelState = true
-		update.PixelColor = color
-	case "off":
-		// delete pixel from pixmap
-		layer.pixelsLock.Lock()
-		delete(layer.Pixels, position)
-		layer.pixelsLock.Unlock()
-
-		// set field on update
-		update.PixelState = false
-	default:
-		http.Error(w, "'state' has invalid value (must be `on` or `off`)", http.StatusBadRequest)
+	// get and verify color
+	color := r.FormValue("color")
+	if !regexpColor.MatchString(color) {
+		http.Error(w, "'color' is invalid, must be HEX color code without hash, e.g. `FF0000`", http.StatusBadRequest)
 		return
 	}
+	layer.Pixels[position] = &pixel{
+		timestamp: time.Now().Unix(),
+		color:     color,
+	}
+
+	// set fields on update
+	update.PixelPosition = position
+	update.PixelColor = color
 
 	// send update to subs
 	c.sendUpdate(update)
