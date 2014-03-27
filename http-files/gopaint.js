@@ -6,7 +6,7 @@ ws.onopen = function() {
 	console.log("websocket opened");
 };
 
-$('#postInfo').html('post to: http://'+document.location.host+'/draw<br/>more info: github.com/GeertJohan/gopaint')
+$('#postInfo').html('post to: http://'+document.location.host+'/draw<br/>more info: <a href="https://github.com/GeertJohan/gopaint" >github.com/GeertJohan/gopaint</a>')
 
 ws.onmessage = function (msg) { 
 	console.dir(msg);
